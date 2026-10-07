@@ -1,212 +1,162 @@
-# SciPAS: Positron Annihilation Spectroscopy in Python
+# scbatch
 
-A Python package for **Doppler Broadening (DB)** and **Coincidence Doppler Broadening (CDB)** analysis, positron implantation profiling, transport simulation, and variable-energy Doppler broadening (VEDB) diffusion-length fitting.
+`scbatch` is a scientific Python package for single-cell batch-effect
+correction research. It supports the paper workflow that compares established
+methods with an anchor-based quantile-quantile correction approach.
 
-SciPAS provides a unified, modular workflow — from raw detector data to material parameters — built on standard scientific Python.
+The package follows Scanpy-style namespaces and uses `anndata.AnnData` as its
+central data structure. It is developed as one published pip package with
+separate UV workspace members for focused module development.
 
----
+## Status
 
-## Features
+The repository currently provides the package and development framework. Batch
+correction methods, graph construction, embeddings, clustering, diagnostic
+plots, and bundled datasets are planned module work and must not be treated as
+implemented scientific functionality until their public APIs and tests land.
 
-- **DB spectrum analysis** — S and W parameter extraction with Poisson uncertainty propagation; automatic 511 keV peak identification and axis centralization
-- **CDB analysis** — 2D coincidence histogram; DB and resolution projections from detector-pair data
-- **Event filtering** — time and energy coincidence filtering for synchronized detector pairs
-- **Implantation profiles** — Makhovian and Ghosh positron stopping profiles; multilayer cumulative stitching; support for external (MC-simulated) profiles
-- **Positron transport solver** — 1D finite-difference solver for the diffusion–drift–annihilation equation with electric fields and radiative boundary conditions
-- **Layered sample model** — `Sample` / `Layer` / `Material` descriptors with depth-dependent diffusion, mobility, and annihilation rates
-- **VEDB fitting** — diffusion-length optimization with covariance estimation; single- and multi-layer support; weighted nonlinear least squares
-- **xarray throughout** — labeled, sliceable data with named coordinates
-- **Uncertainty propagation** via the `uncertainties` library
+## Package layout
 
----
+| Namespace | Responsibility |
+| --- | --- |
+| `scbatch.pp` | Preprocessing and batch-correction methods |
+| `scbatch.pl` | Diagnostic and result plotting |
+| `scbatch.datasets` | Reproducible and synthetic AnnData datasets |
+| `scbatch.tl` | Graph construction, embeddings, clustering, and downstream tools |
 
-## Installation
+The project design is documented in
+[`documentation/Python Package Design.pdf`](documentation/Python%20Package%20Design.pdf)
+and the current research roadmap is in
+[`documentation/roadmap.pdf`](documentation/roadmap.pdf).
 
-Install the released version from PyPI:
+## Develop from a Git checkout
+
+Clone the repository, then choose one package manager. Each option installs
+the local checkout in editable mode.
 
 ```bash
-pip install scipas
+git clone https://github.com/yishaiar/scbatch.git
+cd scbatch
 ```
 
-For development, clone the repository and install from source with the test dependencies:
+### Regular package
+
+Install only the package dependencies.
+
+With UV:
 
 ```bash
-git clone https://github.com/achiyaAmrusi/scipas
-cd scipas
-pip install ".[dev]"
+uv sync --no-dev
 ```
 
-The companion spectrum library [scispectrum](https://github.com/achiyaAmrusi/scispectrum) is installed automatically from PyPI.
+With pip:
 
----
-
-## Quick Start
-
-### Doppler Broadening — S and W parameters
-
-```python
-import pandas as pd
-from scispectrum.core import Spectrum
-from scispectrum.calibration import AxisCalibration, ResolutionCalibration
-from scipas.core import DB
-
-calib = AxisCalibration(lambda ch: 0.5 * ch + 1.0, name="energy_keV")
-res   = ResolutionCalibration(lambda e: 1.8)   # constant FWHM in keV
-spec  = Spectrum.from_dataframe(df, channel_col="channel", counts_col="counts",
-                                axis_calib=calib, resolution_calib=res)
-
-# Identify the 511 keV peak automatically
-db = DB.from_spectrum(spec)
-
-# Extract S and W parameters (energy in keV, relative to 511 keV)
-s = db.s_parameter_calculation(energy_domain_total=(-8, 8),
-                                energy_domain_s=(-0.8, 0.8))
-w = db.w_parameter_calculation(energy_domain_total=(-8, 8),
-                                energy_domain_w_left=(-8, -2),
-                                energy_domain_w_right=(2, 8))
-print(s, w)  # ufloat values with propagated uncertainties
+```bash
+pip install -e .
 ```
 
-### Coincidence Doppler Broadening
+### Development package
 
-```python
-from scipas.filter import PasCoincidenceFilter
-from scipas.core import CDB
+Install the package plus test, lint, type-check, and notebook tools.
 
-# Step 1: find time-coincident events
-pairs = PasCoincidenceFilter.time_coincidence_filter(
-    det_1_df, det_2_df, max_time_interval=10)
+With UV:
 
-# Step 2: apply energy-conservation window (keeps E1 + E2 ≈ 1022 keV)
-energy_pairs = PasCoincidenceFilter.energy_coincidence_filter(
-    pairs,
-    axis_calibration_1=calib_1,
-    axis_calibration_2=calib_2,
-    local_fwhm_1=1.2,
-    local_fwhm_2=1.2)
-
-# Step 3: build CDB object (histogram computed once at construction)
-cdb = CDB(energy_pairs, energy_min=-4, energy_max=4, mesh_interval=0.05)
-
-db  = cdb.doppler_broadening()   # DB ready for S/W analysis
-res = cdb.resolution()           # 1D resolution spectrum
+```bash
+uv sync
 ```
 
-### Implantation profiles
+With pip:
 
-```python
-import numpy as np
-from scipas.transport import makhov_profile, makhov_material_parameters
-
-depth  = np.arange(0, 5000, 1)   # nm
-params = makhov_material_parameters()
-si     = params[params["Material"] == "Si"].iloc[0]
-
-profile = makhov_profile(positron_energy=10, depth_vector=depth,
-                         density=si.density, makhov_parms=si)
+```bash
+pip install -e ".[dev]"
 ```
 
-### Multilayer implantation profile
+`uv sync --no-dev` and `pip install -e .` are the equivalent regular
+installations. `uv sync` and `pip install -e ".[dev]"` are the equivalent
+development installations. The UV `dev` dependency group and pip `dev` extra
+are intentionally kept aligned.
 
-```python
-from scipas.transport import (multilayer_implantation_profile,
-                              makhov_profile, makhov_material_parameters)
+## Install a released package
 
-params = makhov_material_parameters()
-cu     = params[params["Material"] == "Cu"].iloc[0]
-si     = params[params["Material"] == "Si"].iloc[0]
+If you only want the published package, rather than a Git checkout, install it
+from PyPI:
 
-profile = multilayer_implantation_profile(
-    positron_energy=10,
-    depth_vector=np.arange(0, 5000, 1),
-    widths=[500],                          # 500 nm Cu film on Si substrate
-    materials_parameters=[cu, si],
-    densities=[cu.density, si.density],
-    implantation_profile_function=makhov_profile)
+```bash
+pip install scbatch
 ```
 
-### Positron transport — diffusion solver
+For the published package plus the development tools:
 
-```python
-from scipas.model import Sample, Layer, Material
-from scipas.transport import profile_solver
-
-silicon = Material(name="Si", diffusion=1.0, mobility=0.0,
-                   bulk_annihilation_rate=2.0)
-layer   = Layer(width=10000.0, material=silicon)
-sample  = Sample(layers=[layer], absorption_length=0.5)
-
-# Returns xr.DataArray of c(z) on a uniform mesh
-positron_profile = profile_solver(implantation_profile, sample)
+```bash
+pip install "scbatch[dev]"
 ```
 
-### VEDB diffusion-length fitting
+See [`documentation/development.md`](documentation/development.md) for
+workspace-member development, local tests, notebooks, and verification.
 
-```python
-from scipas.analysis import DiffusionLengthOptimization
+## Local development with Git worktrees
 
-optimizer = DiffusionLengthOptimization(
-    positron_implantation_profiles=profiles,   # list of xr.DataArray, one per energy
-    s_measurement=s_series,                    # pd.Series of ufloat
-    initial_guess=initial_sample)
+Each feature uses an isolated Git worktree. From the main checkout:
 
-best_fit, covariance = optimizer.optimize_diffusion_length(bounds=(0, 1000))
-sigma = np.sqrt(np.diag(covariance))
-print(f"L+ = {best_fit} ± {sigma} nm")
+```bash
+cd <path-to-repo>/scbatch
+git worktree add -b <feature-name> ../scbatch-<feature-name>
+cd ../scbatch-<feature-name>
+UV_PROJECT_ENVIRONMENT=$(pwd)/.venv uv sync --project $(pwd)
 ```
 
----
+List worktrees with `git worktree list`. After merging or discarding the
+feature branch, run this from the main checkout:
 
-## Examples
+```bash
+cd <path-to-repo>/scbatch
+git worktree remove --force ../scbatch-<feature-name>
+git branch -d <feature-name>
+```
 
-Full worked examples are in the [`examples/`](./examples) directory:
+Git includes committed `.agents/` and `.codex/` configuration in every
+worktree. Until those directories are committed, a new worktree will not
+contain them. Git does not create symlinks or copy ignored local state. See
+[`documentation/development.md`](documentation/development.md) for the full
+worktree, environment-file, agent-hook, and cleanup conventions.
 
-**DB / CDB Analysis**
-- [DB spectrum analysis](./examples/core/pas_db.ipynb) — load, calibrate, and extract S/W from a DB spectrum
-- [CDB analysis](./examples/core/pas_cdb.ipynb) — process coincidence data into a DB spectrum and S/W parameters
+## Data model and conventions
 
-**VEDB Analysis**
-- [S(E) and W(E) lineshape extraction](./examples/vedb%20analysis/vedb_lineshape.ipynb) — load multi-energy DB spectra; compute S(E) and W(E) curves with errorbars and S–W parametric plot
-- [Diffusion-length fitting — measurement](./examples/vedb%20analysis/vedb_diffusion_length_measurement.ipynb) — fit L₊ from measured S(E) using the transport model; plot fit vs data and annihilation fractions per channel
-- [Diffusion-length fitting — two-layer simulation](./examples/vedb%20analysis/vedb_diffusion_length_2layer_simulation.ipynb) — simulate a damaged surface layer over bulk, fit both L₀ and L₁ simultaneously, and visualise the 2D χ² joint confidence region
+- Public processing and tool functions operate on `anndata.AnnData`.
+- Raw and intermediate values are stored in named AnnData layers.
+- Method provenance and parameters are recorded in `adata.uns`.
+- Embeddings and graph-derived representations use standard AnnData slots.
+- Public request, configuration, and result schemas use Pydantic v2.
 
-**Implantation Profiles and Transport**
-- [Positron profile in Si](./examples/positron%20profile/positron%20profile%20in%20Si.ipynb) — Makhov and Ghosh profiles, multilayer stitching, transport solver, annihilation fractions
-- [Surface-fraction benchmark](./examples/transport%20benchmark/surface_fraction_benchmark.ipynb) — validates `profile_solver` against the exact surface annihilation fraction formula
-- [Analytical profile benchmark](./examples/transport%20benchmark/general_analytical_profiles_benchmark.ipynb) — validates `profile_solver` against the closed-form full profile; confirms O(N⁻²) convergence
+## Package design
 
----
+The package is designed as a unified AnnData workflow. Public functions accept
+and return the same multi-sample, multi-batch AnnData object, including sparse
+or dense matrices. Batch labels and anchor labels are explicit metadata keys.
 
-## Requirements
+- `adata.raw` preserves uncorrected input when a workflow needs it.
+- Named layers hold intermediate transformations, such as an arcsinh layer and
+  a final corrected layer.
+- `adata.uns` records method selection and fitted transformation parameters,
+  including slopes, intercepts, and quantile-curve data when applicable.
+- The correction API will support functional entry points and a
+  scikit-learn-style estimator that fits reference batches and transforms query
+  samples.
+- `scbatch.datasets` will provide lightweight synthetic AnnData examples, and
+  `scbatch.pl` will provide diagnostics for extrapolation, distributional
+  alignment, and per-marker differences.
 
-Following the [SPEC 0](https://scientific-python.org/specs/spec-0000/) support policy:
+These are design contracts, not a claim that the corresponding methods are
+implemented yet.
 
-| Package | Version |
-|---|---|
-| Python | ≥ 3.11 |
-| numpy | ≥ 2.0, < 3 |
-| pandas | ≥ 2.3, < 4 |
-| scipy | ≥ 1.14 |
-| xarray | ≥ 2024.6 |
-| uncertainties | ≥ 3.1 |
-| scispectrum | ≥ 0.3 |
+## Research direction
 
----
-
-## Project Status
-
-SciPAS is under active development. The DB/CDB analysis, implantation profiles, diffusion solver, and VEDB fitting are stable. Planned additions include positron lifetime spectrum analysis and extended Bayesian workflows for model comparison and uncertainty quantification.
-
----
+The target correction workflow uses shared reference controls, non-parametric
+QQ mappings, interpolation within anchor-supported ranges, and chained
+cross-batch transforms. The package will expose this method alongside
+comparator methods only after reproducible implementations and validation are
+available.
 
 ## License
 
-MIT License. See [LICENSE](LICENSE) for details.
-
----
-
-## Author
-
-Achiya Yosef Amrusi — [GitHub](https://github.com/achiyaAmrusi)
-
-Contributions and issues are welcome. Please include a minimal reproducible example when reporting a bug.
+MIT License. See [LICENSE](LICENSE).
