@@ -70,7 +70,7 @@ extend-select = ["E501", "ANN201"]
 [tool.pyright]
 typeCheckingMode = "standard"
 pythonVersion = "3.11"
-include = ["scbatch", "tests"]
+include = ["scbatch"]
 exclude = ["**/node_modules", "**/__pycache__", "**/.git", "**/.venv"]
 
 [tool.setuptools.packages.find]
