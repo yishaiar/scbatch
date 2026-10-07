@@ -1,0 +1,15 @@
+[project]
+name = "scbatch-pp"
+version = "0.1.0"
+description = "Preprocessing and batch-correction workspace member for scbatch"
+requires-python = ">=3.11"
+dependencies = [
+    "anndata>=0.10.0",
+    "numpy>=1.26.0",
+    "pandas>=2.0.0",
+    "scipy>=1.11.0",
+    "scikit-learn>=1.4.0",
+]
+
+[tool.uv]
+package = false

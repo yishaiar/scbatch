@@ -1,3 +1,53 @@
-__pycache__
+__pycache__/
+*.py[cod]
+*$py.class
 .DS_Store
-scbatch.egg-info/
+
+# Python packaging and build caches
+*.egg-info/
+build/
+dist/
+.eggs/
+.cache/
+
+# Test, coverage, lint, and type-checker caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pyre/
+.pytype/
+.pyright/
+.basedpyright/
+.coverage
+.coverage.*
+htmlcov/
+
+# Package-manager caches
+.uv/
+uv.lock
+
+
+
+# Development environments and local configuration
+.env
+.venv/
+.vscode/
+local/
+
+# Notebook outputs and local Jupyter state
+/*.ipynb
+.ipynb_checkpoints/
+.jupyter/
+.jupyter_ystore.db
+
+# Local scripts and agent state
+/*.py
+/.claude
+.agents/memory/CURRENT_PLAN.md
+.understand-anything/
+
+# Machine-specific Codex runtime
+.codex/jupyter-mcp-server-runtime/
+
+#currently..
+examples/
