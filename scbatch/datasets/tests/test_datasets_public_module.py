@@ -84,7 +84,7 @@ class TestDatasetsNamespace(unittest.TestCase):
         self.assertEqual(adata.shape, (100, 3))
         self.assertListEqual(list(adata.var_names), ["marker_1", "marker_2", "marker_3"])
         self.assertEqual(adata.obs["sample_id"].nunique(), 10)
-        self.assertEqual(int(adata.obs["is_anchor"].sum()), 20)
+        self.assertEqual(np.count_nonzero(adata.obs["is_anchor"].to_numpy(dtype=bool)), 20)
         self.assertEqual(adata.obs.iloc[0]["anchor_to_batch"], "Batch_1")
 
     def test_create_adata_uses_dataframe_columns_as_marker_names(self) -> None:

@@ -30,7 +30,10 @@ class TestGenerateSyntheticData(unittest.TestCase):
 
         self.assertEqual(first.shape, (12 * 3 * 5, 3))
         np.testing.assert_array_equal(cast(Any, first.X), cast(Any, second.X))
-        self.assertEqual(int(first.obs["is_anchor"].sum()), 12 * 4)
+        self.assertEqual(
+            np.count_nonzero(first.obs["is_anchor"].to_numpy(dtype=bool)),
+            12 * 4,
+        )
 
     def test_no_batch_affect_makes_paired_samples_equal(self) -> None:
         adata = generate_synthetic_data(
