@@ -67,8 +67,8 @@ Skills below cover structured processes. The per-file execution-validation loop 
 | Event | Script | Purpose |
 | --- | --- | --- |
 | `PreToolUse` (Bash) | `secret-scan-on-commit.sh` | No-op unless the command is `git commit`; blocks the commit if the staged diff looks like a hardcoded credential |
-| `PostToolUse` (Edit\|Write) | `format-on-save.sh` | Auto-formats the saved Python file with Ruff |
-| `PostToolUse` (Edit\|Write) | `lint-on-save.sh` | Lints the saved Python file with Ruff |
+| `PostToolUse` (Edit\|Write) | `format-on-save.sh` | Auto-formats saved Python files and Jupyter notebook code cells with Ruff |
+| `PostToolUse` (Edit\|Write) | `lint-on-save.sh` | Lints saved Python files, Markdown code fences, and Jupyter notebook code cells with Ruff |
 | `PostToolUse` (Edit\|Write) | `pyright-on-save.sh` | Type-checks the saved Python file with BasedPyright |
 | `PostToolUse` (Edit\|Write) | `debug-artifact-on-save.sh` | Flags leftover `pdb` and `breakpoint()` calls |
 | `PostToolUse` (Edit\|Write) | `test-on-spec-save.sh` | Runs `uv run pytest` whenever a `test_*.py` file is saved |
@@ -85,6 +85,8 @@ Skills below cover structured processes. The per-file execution-validation loop 
 | User asks to refactor, clean up, simplify, or improve code | `/refactor` |
 | User asks to review, check, or audit code, or is preparing a PR | `/code-reviewer` |
 | User asks to write or format a commit message, or is ready to commit | `/commit-workflow` |
+| User asks to create a planned notebook or add or change its code cells | `/execute-new-notebook-code` |
+| User asks to run or validate a Jupyter notebook | `/start-jupyter-server`, then `/validate-notebook` |
 | User says rebase, fix conflicts, or my branch is behind | `/rebase-and-resolve` |
 | User asks to add tests or increase coverage | `/write-tests` |
 | User asks to create, open, or draft a PR | `/create-pr` |
@@ -94,7 +96,7 @@ Skills below cover structured processes. The per-file execution-validation loop 
 | User says run tests, fix tests, make tests green, or after code changes | `/babysit-tests` |
 | User shares or pastes a skill file, asks if it is safe, or wants to audit one | `/skill-scanner` |
 | User finishes or pauses complex feature work and wants to save context | `/save-feature-context` |
-| User asks to start Jupyter, check its connection, or verify a live Jupyter kernel | `/start-jupyter-server` |
+| User asks to start Jupyter, check its connection, or verify that a live Jupyter kernel connection is available | `/start-jupyter-server` |
 
 ### New-feature flow
 
@@ -111,6 +113,35 @@ For implementing a new feature end-to-end, skills chain in this order. These are
 3. `/create-pr` invokes `/commit-workflow` if needed, invokes `/rebase-and-resolve` when the branch is behind, runs `/code-reviewer` against the resulting diff, drafts the PR description, and invokes `/track-release-feature` after a successful merge.
 
 Push and opening a PR always require explicit user go-ahead. That gate is not skill-controlled.
+
+### New-notebook flow
+
+For a new Jupyter notebook or new code in an existing notebook, use this
+sequence. Each stage uses persisted plan state where applicable instead of
+relying solely on conversation history.
+
+1. `/plan-new-feature` defines the new notebook or notebook-code goal,
+   intended inputs, files, and validation target. After approval, save the plan to
+   `.agents/memory/CURRENT_PLAN.md`.
+
+2. `/execute-new-notebook-code` creates the notebook or adds the approved new code
+   to an existing notebook. It adds a runtime-provenance cell that asserts
+   imports come from the intended checkout, verifies structure only, and hands
+   off to validation. It must not claim that the notebook runs.
+
+3. Invoke `/start-jupyter-server` immediately before validation and confirm that
+   a live Jupyter kernel connection is available.
+
+4. Invoke `/validate-notebook` deliberately after notebook work is ready, not
+   after every edit. Validation must open the notebook, restart the kernel, run
+   all cells, wait for the kernel to become idle, inspect fresh outputs and
+   provenance, then save the notebook. Source inspection, `nbformat`, shell
+   imports, and Jupyter server health checks are supplementary only, never
+   proof that the notebook ran.
+
+5. If validation reports an error, invoke `/debugger` with the failing cell and
+   full notebook output, repair the responsible layer, then repeat step 4. Do
+   not describe the notebook as working before step 4 passes.
 
 ### Rebase conflict patterns
 
