@@ -49,5 +49,8 @@ local/
 # Machine-specific Codex runtime
 .codex/jupyter-mcp-server-runtime/
 
-#currently..
-examples/
+# Keep versioned notebook examples while excluding generated Jupyter state.
+examples/.ipynb_checkpoints/
+
+tmp/
+local_examples/

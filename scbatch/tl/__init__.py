@@ -1,1 +1,5 @@
-"""Scanpy-style tools for graph construction, embeddings, and clustering."""
+"""scbatch-specific downstream-analysis tools."""
+
+from .dbscan import dbscan
+
+__all__ = ["dbscan"]

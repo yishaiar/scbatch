@@ -104,17 +104,28 @@ def summarize_samples(adata: AnnData, columns=adata_columns) -> pd.DataFrame:
     return summary.reset_index(drop=True)
 
 
+def get_sample_data_mask(
+    adata: AnnData,
+    batch_index: int,
+    sample_index: int,
+    layer: str | None = None,
+) -> pd.Series:
+    """from X or a layer containing all samples observations-by-markers together
+    Filter one sample's observations-by-markers matrix"""
+    sample_mask = (adata.obs["batch_index"] == batch_index) & (
+        adata.obs["sample_index"] == sample_index
+    )
+    return sample_mask
+
+
 def get_sample_data(
     adata: AnnData,
     batch_index: int,
     sample_index: int,
     layer: str | None = None,
 ) -> np.ndarray[Any, Any]:
-    """from X or a layer containing all samples observations-by-markers together
-    Filter one sample's observations-by-markers matrix"""
-    sample_mask = (adata.obs["batch_index"] == batch_index) & (
-        adata.obs["sample_index"] == sample_index
-    )
+    """Return a copy of one sample's observations-by-markers matrix."""
+    sample_mask = get_sample_data_mask(adata, batch_index, sample_index)
     selected = adata[sample_mask.to_numpy()]
     matrix = selected.X if layer is None else selected.layers[layer]
     if matrix is None:
