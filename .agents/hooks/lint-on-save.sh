@@ -5,14 +5,18 @@
 # Script: lint-on-save.sh
 #
 # What it does:
-#   Runs Ruff's linter on the saved Python file or Markdown document to
-#   surface code quality issues, logical bugs, and unused imports.
+#   Runs Ruff's linter on saved Python files, Markdown documents, and Jupyter
+#   notebook code cells to surface code quality issues and unused imports.
 #
 # How it handles Markdown (.md) files:
 #   Ruff does NOT lint your English text. Instead, it extracts blocks of code
 #   wrapped inside \`\`\`python ... \`\`\` fences and treats them as isolated
 #   Python code snippets. It validates them to ensure documentation examples
 #   are free of syntax errors, broken logic, typos, or stale/unused imports.
+#
+# How it handles Jupyter notebooks (.ipynb):
+#   Ruff natively extracts and lints code cells while preserving notebook
+#   structure. This is static analysis only, not notebook execution.
 #
 # Crucial Execution Notes:
 #   1. NO '--fix' Flag: Per constraints, it only surfaces/raises errors so that
@@ -49,7 +53,7 @@ FILE_PATHS=$(
 [ -z "$FILE_PATHS" ] && exit 0
 
 while IFS= read -r FILE_PATH; do
-[[ ! "$FILE_PATH" =~ \.(py|md)$ ]] && continue
+[[ ! "$FILE_PATH" =~ \.(py|md|ipynb)$ ]] && continue
 
 if [[ "$FILE_PATH" != /* ]]; then
   if [[ -f "$FILE_PATH" ]]; then
