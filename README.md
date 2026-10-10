@@ -169,14 +169,15 @@ independent copy, so retaining all layers has a proportional memory cost.
 | Scaling | `scanpy.pp.scale` | `adata.layers["scaled"]` |
 | UMAP, including its required neighbors graph | `scanpy.pp.neighbors`, then `scanpy.tl.umap` | graph in `adata.obsp` and `adata.uns["neighbors"]`; coordinates in `adata.obsm["X_umap"]`; `adata.layers["umap"]` X snapshot |
 | Leiden, when `clustering_is_leiden=True` | `scanpy.tl.leiden` | `adata.obs["leiden"]`, `adata.uns["leiden"]`, and `adata.layers["leiden"]` X snapshot |
-| DBSCAN, when `clustering_is_leiden=False` | `scbatch.tl.dbscan` | algorithm output and `adata.layers["dbscan"]` X snapshot |
+| DBSCAN, when `clustering_is_leiden=False` | `scbatch.tl.dbscan` | scaffold currently returns `adata` unchanged; `adata.layers["dbscan"]` is an X snapshot |
 
 The pipeline mutates the supplied `adata` and works on `adata.X`. Its `input`
-layer is an independent snapshot of the matrix before processing. The current
-gate keeps values above `0.01` and removes values above each sample's
-`0.9999` upper quantile. This provisional rule is not validated biological QC;
-apply domain-specific QC before running the pipeline. `clustering_is_leiden=True`
-runs Scanpy Leiden, while `False` runs scbatch DBSCAN.
+layer preserves pre-transform values for the observations retained by gating.
+The current gate keeps values above `0.01` and removes values above each
+sample's `0.9999` upper quantile. This provisional rule is not validated
+biological QC; apply domain-specific QC before running the pipeline.
+`clustering_is_leiden=True` runs Scanpy Leiden, while `False` runs scbatch
+DBSCAN.
 
 `filter_cells`, `scale`, `neighbors`, `umap`, and `leiden` are deliberately
 not re-exported by scbatch. Import them directly from Scanpy when you need
