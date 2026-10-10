@@ -22,12 +22,16 @@ implemented scientific functionality until their public APIs and tests land.
 | `scbatch.pp` | Preprocessing and batch-correction methods |
 | `scbatch.pl` | Diagnostic and result plotting |
 | `scbatch.datasets` | Reproducible and synthetic AnnData datasets |
-| `scbatch.tl` | Graph construction, embeddings, clustering, and downstream tools |
+| `scbatch.tl` | scbatch-specific downstream tools, currently DBSCAN |
 
 The project design is documented in
 [`documentation/Python Package Design.pdf`](documentation/Python%20Package%20Design.pdf)
 and the current research roadmap is in
 [`documentation/roadmap.pdf`](documentation/roadmap.pdf).
+
+## Notebook examples
+
+Jupyter notebook examples are located in the [`examples/`](examples/) directory.
 
 ## Develop from a Git checkout
 
@@ -148,6 +152,39 @@ or dense matrices. Batch labels and anchor labels are explicit metadata keys.
 
 These are design contracts, not a claim that the corresponding methods are
 implemented yet.
+
+## Pipeline contract
+
+`scbatch.run_pipeline` is the orchestration API. It runs the working matrix
+through the following named representations. Every matrix snapshot is an
+independent copy, so retaining all layers has a proportional memory cost.
+
+| Stage | Owner | Result |
+| --- | --- | --- |
+| Input | scbatch pipeline | `adata.layers["input"]` |
+| Empty-profile removal | `scanpy.pp.filter_cells(min_counts=1)` | `adata.layers["filtered"]` |
+| ArcSinh | `scbatch.pp.arcsinh` | `adata.layers["arcsinh"]` |
+| Batch correction | `scbatch.pp.batch_correct` | `adata.layers["batch_corrected"]` |
+| Core normalization | `scbatch.pp.normalize_core` | `adata.layers["core_normalized"]` |
+| Scaling | `scanpy.pp.scale` | `adata.layers["scaled"]` |
+| UMAP, including its required neighbors graph | `scanpy.pp.neighbors`, then `scanpy.tl.umap` | graph in `adata.obsp` and `adata.uns["neighbors"]`; coordinates in `adata.obsm["X_umap"]`; `adata.layers["umap"]` X snapshot |
+| Leiden, when `clustering_is_leiden=True` | `scanpy.tl.leiden` | `adata.obs["leiden"]`, `adata.uns["leiden"]`, and `adata.layers["leiden"]` X snapshot |
+| DBSCAN, when `clustering_is_leiden=False` | `scbatch.tl.dbscan` | algorithm output and `adata.layers["dbscan"]` X snapshot |
+
+The pipeline mutates the supplied `adata` and works on `adata.X`. Its `input`
+layer is an independent snapshot of the matrix before processing. The default
+Scanpy QC call removes empty profiles only. It is not a biological or
+CyTOF-specific gating threshold; apply domain-specific QC before running the
+pipeline. `clustering_is_leiden=True` runs Scanpy Leiden, while `False` runs
+scbatch DBSCAN.
+
+`filter_cells`, `scale`, `neighbors`, `umap`, and `leiden` are deliberately
+not re-exported by scbatch. Import them directly from Scanpy when you need
+individual control. ArcSinh, batch correction, core normalization, and DBSCAN
+remain scbatch-owned operations. ArcSinh, core normalization, and QQ batch
+correction currently use a temporary ``adata.X + 1`` placeholder. They must
+not be interpreted as completed scientific implementations. The other batch
+correction methods and DBSCAN remain scaffolds.
 
 ## Research direction
 
