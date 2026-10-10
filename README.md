@@ -162,7 +162,7 @@ independent copy, so retaining all layers has a proportional memory cost.
 | Stage | Owner | Result |
 | --- | --- | --- |
 | Input | scbatch pipeline | `adata.layers["input"]` |
-| Empty-profile removal | `scanpy.pp.filter_cells(min_counts=1)` | `adata.layers["filtered"]` |
+| Per-sample gating | `scbatch.pp.gating` | `adata.layers["Gated"]` |
 | ArcSinh | `scbatch.pp.arcsinh` | `adata.layers["arcsinh"]` |
 | Batch correction | `scbatch.pp.batch_correct` | `adata.layers["batch_corrected"]` |
 | Core normalization | `scbatch.pp.normalize_core` | `adata.layers["core_normalized"]` |
@@ -172,19 +172,18 @@ independent copy, so retaining all layers has a proportional memory cost.
 | DBSCAN, when `clustering_is_leiden=False` | `scbatch.tl.dbscan` | algorithm output and `adata.layers["dbscan"]` X snapshot |
 
 The pipeline mutates the supplied `adata` and works on `adata.X`. Its `input`
-layer is an independent snapshot of the matrix before processing. The default
-Scanpy QC call removes empty profiles only. It is not a biological or
-CyTOF-specific gating threshold; apply domain-specific QC before running the
-pipeline. `clustering_is_leiden=True` runs Scanpy Leiden, while `False` runs
-scbatch DBSCAN.
+layer is an independent snapshot of the matrix before processing. The current
+gate keeps values above `0.01` and removes values above each sample's
+`0.9999` upper quantile. This provisional rule is not validated biological QC;
+apply domain-specific QC before running the pipeline. `clustering_is_leiden=True`
+runs Scanpy Leiden, while `False` runs scbatch DBSCAN.
 
 `filter_cells`, `scale`, `neighbors`, `umap`, and `leiden` are deliberately
 not re-exported by scbatch. Import them directly from Scanpy when you need
-individual control. ArcSinh, batch correction, core normalization, and DBSCAN
-remain scbatch-owned operations. ArcSinh, core normalization, and QQ batch
-correction currently use a temporary ``adata.X + 1`` placeholder. They must
-not be interpreted as completed scientific implementations. The other batch
-correction methods and DBSCAN remain scaffolds.
+individual control. ArcSinh computes `arcsinh(X / 5)`. Core normalization and
+QQ batch correction currently use an `X + 1` placeholder; neither is a
+completed scientific implementation. Other batch-correction methods and
+DBSCAN remain scaffolds.
 
 ## Research direction
 

@@ -19,7 +19,7 @@ def sample_gating(adata: AnnData, sample_mask: pd.Series, gateValue: float) -> n
         return core_mask
 
     quantile = np.quantile(gated, 0.9999, axis=0)
-    outlier_mask = (gated < quantile).all(axis=1)
+    outlier_mask = (gated <= quantile).all(axis=1)
     keep_mask = np.zeros(sample.shape[0], dtype=bool)
     keep_mask[np.flatnonzero(core_mask)] = outlier_mask
     return keep_mask
@@ -33,7 +33,8 @@ def gating(adata: AnnData, func=sample_gating) -> AnnData:
         # Apply the configured  operation to this sample.
         sample_mask = get_sample_data_mask(adata, int(batch_index), int(sample_index))
         gated_samples_mask[sample_mask.to_numpy()] = func(adata, sample_mask, **kwargs)
-    return adata[gated_samples_mask]
+    adata._inplace_subset_obs(gated_samples_mask)
+    return adata
 
 
 if __name__ == "__main__":

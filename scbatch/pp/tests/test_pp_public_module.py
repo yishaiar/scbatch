@@ -104,6 +104,45 @@ class TestMatrixPlaceholderFunctions(unittest.TestCase):
                     function(adata)
 
 
+class TestGating(unittest.TestCase):
+    """Verify sample-local gating preserves the input object's alignment."""
+
+    def test_gating_subsets_input_in_place_and_keeps_layers_aligned(self) -> None:
+        matrix = np.array([[1.0, 1.0], [2.0, 2.0], [3.0, 3.0], [4.0, 4.0], [5.0, 5.0], [6.0, 6.0]])
+        adata = AnnData(
+            X=matrix.copy(),
+            obs={
+                "batch_index": [0, 0, 0, 1, 1, 1],
+                "sample_index": [0, 0, 0, 0, 0, 0],
+                "label": list("abcdef"),
+            },
+            layers={"source": matrix.copy()},
+        )
+
+        result = scbatch.pp.gating(adata)
+
+        self.assertIs(result, adata)
+        self.assertEqual(adata.obs["label"].tolist(), ["a", "b", "d", "e"])
+        np.testing.assert_array_equal(
+            cast(Any, adata.X), [[1.0, 1.0], [2.0, 2.0], [4.0, 4.0], [5.0, 5.0]]
+        )
+        np.testing.assert_array_equal(
+            cast(Any, adata.layers["source"]),
+            [[1.0, 1.0], [2.0, 2.0], [4.0, 4.0], [5.0, 5.0]],
+        )
+
+    def test_gating_keeps_single_observation_sample(self) -> None:
+        adata = AnnData(
+            X=np.array([[1.0, 1.0]]),
+            obs={"batch_index": [0], "sample_index": [0]},
+        )
+
+        result = scbatch.pp.gating(adata)
+
+        self.assertIs(result, adata)
+        self.assertEqual(adata.n_obs, 1)
+
+
 class TestPipelineContract(unittest.TestCase):
     """Verify layer snapshots and Scanpy ownership in the pipeline."""
 
