@@ -15,6 +15,10 @@ user to run `/plan-new-feature` first. Do not infer a plan from conversation
 context unless the user explicitly authorizes proceeding without one. Do not
 add work beyond the approved notebook scope.
 
+Do not invoke this skill because a repository contains a notebook or because a
+code change may affect a notebook. It requires an explicit user request for
+notebook work or an explicitly approved notebook plan.
+
 ## Create or update
 
 1. Read the notebook's imported public APIs and local repository instructions.
