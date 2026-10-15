@@ -11,6 +11,7 @@ license = "MIT"
 authors = [
     { name = "Yishai Arieli", email = "yishai.arieli@mail.huji.ac.il" }
 ]
+# Preferred development interpreter: Python 3.11.9.
 requires-python = ">=3.11"
 dependencies = [
     "numpy>=1.26.0",
@@ -29,6 +30,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+    "pip",
     "pytest>=8.0",
     "pytest-cov",
     "ruff==0.15.20",
@@ -43,6 +45,7 @@ dev = [
 
 [dependency-groups]
 dev = [
+    "pip",
     "pytest>=8.0",
     "pytest-cov",
     "ruff==0.15.20",

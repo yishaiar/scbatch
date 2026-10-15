@@ -1,14 +1,22 @@
 # AGENTS.md
 
-This file provides guidance to coding agents when working with code in this repository.
-
-> **Always read `.agents/memory/MEMORY.md` at the start of every session**. It contains persistent project knowledge and gotchas.
-
-## Overview
-
-`scbatch` is a scientific Python monorepo for the batch-effect comparison paper and its package implementation. It has one published distribution, `scbatch`; `scbatch/pp`, `scbatch/pl`, `scbatch/datasets`, and `scbatch/tl` are internal UV workspace ownership boundaries, not separately installable applications.
+This file provides guidance to coding agents when working with code: instructions, workflows, skills, and policies.
 
 ## Commands
+
+## Communication
+
+- Default to Caveman `lite` in replies. Keep technical meaning clear.
+- Follow the user's request to switch styles or use another Caveman intensity.
+
+### Command invocation and approvals
+
+- Run exactly one command per tool call. Do not chain or combine commands with `&&`, `||`, `;`, pipes, or shell wrappers. This applies to every command.
+- Run approved checks directly, such as `uv run pytest ...`, so command rules can match.
+- Avoid unnecessary variable assignments; they can prevent a rule for the underlying command from matching.
+- If a variable assignment is required and the command prompts, request approval for that specific command. Do not allow all shell commands to avoid the prompt.
+- Notebook execution remains deliberate and follows the notebook validation workflow below. Then invoke the notebook command directly.
+
 
 ### Installation
 
@@ -20,13 +28,13 @@ uv sync
 
 ```bash
 # One package component
-uv run pytest scbatch/<module>/tests
+uv run pytest <module>/tests
 
 # All package tests
 uv run pytest
 
 # A specific test file
-uv run pytest scbatch/<module>/tests/test_<component>.py
+uv run pytest <module>/tests/test_<component>.py
 ```
 
 ### Linting and formatting
@@ -98,15 +106,22 @@ Skills below cover structured processes. The per-file execution-validation loop 
 | User finishes or pauses complex feature work and wants to save context | `/save-feature-context` |
 | User asks to start Jupyter, check its connection, or verify that a live Jupyter kernel connection is available | `/start-jupyter-server` |
 
+### Architecture reference
+
+For the staged pipeline architecture blueprint, see
+`.agents/architecture_layered_pipeline.md`. Use it when scaffolding an
+application-style workflow; it is a reference and does not override this
+repository's current architecture instructions.
+
 ### New-feature flow
 
 For implementing a new feature end-to-end, skills chain in this order. These are three separate pipelines. Clear the conversation between each step for fresh context; every step reads persisted state rather than conversation history.
 
-1. `/plan-new-feature` plans in Plan Mode. On approval, it saves the plan to `.agents/memory/CURRENT_PLAN.md`, a gitignored local scratch file, and suggests switching permission mode for the execution phase.
+1. `/plan-new-feature` plans in Plan Mode. On approval, it saves the plan to `documentation/CURRENT_PLAN.md`, a gitignored local scratch file, and suggests switching permission mode for the execution phase.
 
    Clear the conversation here.
 
-2. `/execute-new-feature` loads the approved plan from `.agents/memory/CURRENT_PLAN.md`, then implements it phase by phase: types, logic, error handling, tests, and documentation. It invokes `/write-tests`, then `/babysit-tests` to verify the result.
+2. `/execute-new-feature` loads the approved plan from `documentation/CURRENT_PLAN.md`, then implements it phase by phase: types, logic, error handling, tests, and documentation. It invokes `/write-tests`, then `/babysit-tests` to verify the result.
 
    Clear the conversation here.
 
@@ -122,7 +137,7 @@ relying solely on conversation history.
 
 1. `/plan-new-feature` defines the new notebook or notebook-code goal,
    intended inputs, files, and validation target. After approval, save the plan to
-   `.agents/memory/CURRENT_PLAN.md`.
+   `documentation/CURRENT_PLAN.md`.
 
 2. `/execute-new-notebook-code` creates the notebook or adds the approved new code
    to an existing notebook. It adds a runtime-provenance cell that asserts
@@ -155,42 +170,3 @@ relying solely on conversation history.
 
 - **`/generate-release-notes`**. Expand raw bullets accumulated by `/track-release-feature` into polished release notes at release-cut time.
 - **`/personal:update-work-log`**. Personal tooling from the source conventions, not part of this repository's agent framework. Add a repository-level equivalent only if requested later.
-
-## Architecture
-
-### Scientific package architecture
-
-This repository is a Scanpy-style scientific package, not an application monorepo. Its UV workspace members are ownership boundaries for scientific code.
-
-```text
-AnnData input
-    |
-    +-- scbatch.datasets  reproducible inputs and fixtures
-    +-- scbatch.pp        validation, transformations, correction
-    +-- scbatch.tl        graph, embedding, clustering, downstream analysis
-    +-- scbatch.pl        diagnostics and publication-ready plots
-```
-
-`pp` may write documented corrected or intermediate layers and method provenance to `adata.uns`. `tl` consumes documented representations and writes graphs or embeddings to standard AnnData slots. `pl` reads results without mutation unless its public API explicitly states otherwise. `datasets` supplies deterministic, documented test and example inputs.
-
-Use `AnnData` for data-bearing APIs and Pydantic v2 for public request, configuration, and result schemas. Validate metadata keys, shapes, and axis alignment before mutation.
-
-### Package structure
-
-```text
-scbatch/
-├── pp/        # preprocessing and batch correction
-├── pl/        # diagnostics and result plotting
-├── datasets/  # reproducible and synthetic AnnData datasets
-└── tl/        # graph, embedding, clustering, and downstream tools
-```
-
-When creating a new scientific capability, first define the public schema and AnnData mutation contract. Then implement it in the owning member, add local tests for normal, invalid, empty, sparse, and dense inputs as applicable, and export only stable public functions through the corresponding namespace.
-
-The generic staged-pipeline blueprint is preserved in `.agents/memory/architecture_layered_pipeline.md` for future repositories that actually have applications. Do not force that application architecture onto `scbatch`.
-
-## Tests
-
-Tests live beside the owning component at `scbatch/<module>/tests/test_<component>.py`. Keep setup local to the test class, use `unittest.TestCase` for synchronous code and `unittest.IsolatedAsyncioTestCase` for asynchronous code, and use `unittest.mock` for external services. Test normal behavior, invalid metadata, empty inputs, sparse and dense inputs where supported, and Pydantic validation when a public schema is introduced.
-
-Jupyter is optional support for notebooks and exploratory verification. The `start-jupyter-server` skill checks connectivity only and must not substitute for package tests.
