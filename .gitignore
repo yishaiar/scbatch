@@ -43,7 +43,7 @@ local/
 # Local scripts and agent state
 /*.py
 /.claude
-.agents/memory/CURRENT_PLAN.md
+/documentation/CURRENT_PLAN.md
 .understand-anything/
 
 # Machine-specific Codex runtime
